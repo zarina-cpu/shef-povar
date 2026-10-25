@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AuthBar from "@/components/AuthBar";
 import DishSuggestions from "@/components/DishSuggestions";
 import RecipeCard from "@/components/RecipeCard";
@@ -38,6 +38,36 @@ export default function HomePage() {
   const [suggestionsIntro, setSuggestionsIntro] = useState("");
   const [ideasMode, setIdeasMode] = useState(false);
   const [avoidRecipeTitles, setAvoidRecipeTitles] = useState([]);
+  const aiBusyRef = useRef(false);
+
+  async function postJson(url, payload) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 55000);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        const err = new Error(data.error || "Ошибка сервера.");
+        if (typeof data.retryAfterSec === "number") {
+          err.retryAfterSec = data.retryAfterSec;
+        }
+        throw err;
+      }
+      return data;
+    } catch (err) {
+      if (err?.name === "AbortError") {
+        throw new Error("Долго нет ответа от шефа. Попробуйте ещё раз через минуту.");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
   const handleAuthChange = useCallback(async (nextUser) => {
     setUser(nextUser);
@@ -90,20 +120,12 @@ export default function HomePage() {
     dishTypeLabel,
     avoidTitles = []
   ) {
-    const response = await fetch("/api/recipe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ingredients: ingredientsText,
-        equipment,
-        dishType: dishTypeLabel,
-        avoidTitles,
-      }),
+    const data = await postJson("/api/recipe", {
+      ingredients: ingredientsText,
+      equipment,
+      dishType: dishTypeLabel,
+      avoidTitles,
     });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "Не получилось собрать рецепт.");
-    }
     setRecipe(data.recipe);
     resetRecipeMeta(makeRecipeId());
     setAvoidRecipeTitles(avoidTitles);
@@ -114,6 +136,9 @@ export default function HomePage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (aiBusyRef.current || loading) {
+      return;
+    }
     setError("");
 
     const equipment = resolveEquipment(selected, extraEquipment);
@@ -138,6 +163,7 @@ export default function HomePage() {
     }
 
     setLoading(true);
+    aiBusyRef.current = true;
     setRecipe(null);
     setAvoidRecipeTitles([]);
 
@@ -147,21 +173,17 @@ export default function HomePage() {
       setIdeasMode(true);
 
       try {
-        const response = await fetch("/api/dish-suggestions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ equipment, dishType: dishTypeLabel }),
+        const data = await postJson("/api/dish-suggestions", {
+          equipment,
+          dishType: dishTypeLabel,
         });
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || "Не получилось подобрать идеи.");
-        }
         setSuggestionsIntro(data.intro || "");
         setSuggestions(data.dishes || []);
       } catch (err) {
         setError(err.message || "Не получилось подобрать идеи.");
         setIdeasMode(false);
       } finally {
+        aiBusyRef.current = false;
         setLoading(false);
       }
       return;
@@ -176,6 +198,7 @@ export default function HomePage() {
     } catch (err) {
       setError(err.message || "Не получилось собрать рецепт.");
     } finally {
+      aiBusyRef.current = false;
       setLoading(false);
     }
   }
@@ -192,7 +215,7 @@ export default function HomePage() {
   }
 
   async function handleAnotherRecipe() {
-    if (!recipe || loading) {
+    if (!recipe || loading || aiBusyRef.current) {
       return;
     }
     const trimmed = ingredients.trim();
@@ -205,12 +228,14 @@ export default function HomePage() {
     const avoid = [...avoidRecipeTitles, recipe.title].filter(Boolean);
     setError("");
     setLoading(true);
+    aiBusyRef.current = true;
 
     try {
       await fetchRecipeForIngredients(trimmed, equipment, dishTypeLabel, avoid);
     } catch (err) {
       setError(err.message || "Не получилось подобрать другой вариант.");
     } finally {
+      aiBusyRef.current = false;
       setLoading(false);
     }
   }
@@ -220,8 +245,12 @@ export default function HomePage() {
     const dishTypeLabel = resolveDishTypes(dishTypes);
     const list = formatIngredientsList(dish.ingredients);
     setIngredients(list);
+    if (loading || aiBusyRef.current) {
+      return;
+    }
     setError("");
     setLoading(true);
+    aiBusyRef.current = true;
     setRecipe(null);
     setAvoidRecipeTitles([]);
 
@@ -230,6 +259,7 @@ export default function HomePage() {
     } catch (err) {
       setError(err.message || "Не получилось собрать рецепт.");
     } finally {
+      aiBusyRef.current = false;
       setLoading(false);
     }
   }

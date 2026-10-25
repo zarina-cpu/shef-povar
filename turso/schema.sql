@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT,
   image TEXT,
   phone TEXT,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  last_recipe_request_at INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS saved_recipes (
