@@ -1,7 +1,5 @@
-import { auth } from "@/auth";
 import { buildPrompt, parseRecipe } from "@/lib/gemini";
 import { generateGeminiText } from "@/lib/geminiGenerate";
-import { consumeRecipeCooldown, releaseRecipeCooldown } from "@/lib/recipeRateLimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -38,21 +36,6 @@ export async function POST(request) {
     return badRequest("Слишком длинный список. Сократите ввод.");
   }
 
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (userId) {
-    const cooldown = await consumeRecipeCooldown(userId);
-    if (!cooldown.ok) {
-      return Response.json(
-        {
-          error: `Подождите ${cooldown.retryAfterSec} сек. Можно отправлять новый запрос на рецепт раз в 30 секунд. Если шеф ещё думает — дождитесь ответа, лимит на это не влияет.`,
-          retryAfterSec: cooldown.retryAfterSec,
-        },
-        { status: 429 }
-      );
-    }
-  }
-
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return Response.json(
@@ -77,13 +60,6 @@ export async function POST(request) {
     const recipe = parseRecipe(text);
     return Response.json({ recipe });
   } catch (error) {
-    if (userId) {
-      try {
-        await releaseRecipeCooldown(userId);
-      } catch {
-        /* лимит останется — редкий сбой БД */
-      }
-    }
     return Response.json(
       { error: error.message || "Не получилось собрать рецепт." },
       { status: 502 }

@@ -63,11 +63,7 @@ export default function HomePage() {
         }
       }
       if (!response.ok) {
-        const err = new Error(data.error || "Ошибка сервера.");
-        if (typeof data.retryAfterSec === "number") {
-          err.retryAfterSec = data.retryAfterSec;
-        }
-        throw err;
+        throw new Error(data.error || "Ошибка сервера.");
       }
       return data;
     } catch (err) {
