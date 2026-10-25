@@ -8,8 +8,16 @@ const FoodBackground3DCanvas = dynamic(() => import("./FoodBackground3DCanvas"),
   loading: () => null,
 });
 
+function readDarkTheme() {
+  if (typeof document === "undefined") {
+    return false;
+  }
+  return document.documentElement.dataset.theme === "dark";
+}
+
 export default function FoodBackground3D() {
   const [mode, setMode] = useState("off");
+  const [dark, setDark] = useState(false);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -19,6 +27,12 @@ export default function FoodBackground3D() {
     }
     const mobile = window.matchMedia("(max-width: 640px)").matches;
     setMode(mobile ? "lite" : "full");
+    setDark(readDarkTheme());
+
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => setDark(readDarkTheme()));
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
   }, []);
 
   if (mode === "off") {
@@ -27,7 +41,7 @@ export default function FoodBackground3D() {
 
   return (
     <div className="food-bg-3d" aria-hidden="true">
-      <FoodBackground3DCanvas lite={mode === "lite"} />
+      <FoodBackground3DCanvas lite={mode === "lite"} dark={dark} />
     </div>
   );
 }

@@ -62,6 +62,7 @@ body {
 .app-shell {
   position: relative;
   z-index: 1;
+  isolation: isolate;
 }
 
 .food-bg-3d {
@@ -69,7 +70,7 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.92;
+  opacity: 0.18;
   overflow: hidden;
   min-height: 100vh;
   min-height: 100dvh;
@@ -78,32 +79,41 @@ body {
 .food-bg-3d canvas {
   width: 100% !important;
   height: 100% !important;
+  pointer-events: none;
 }
 
 .food-bg-3d::after {
   content: "";
   position: absolute;
   inset: 0;
+  pointer-events: none;
   background: radial-gradient(
-    ellipse 95% 85% at 50% 45%,
-    transparent 0%,
-    color-mix(in srgb, var(--bg) 35%, transparent) 55%,
+    ellipse 120% 100% at 50% 50%,
+    transparent 40%,
+    color-mix(in srgb, var(--bg) 25%, transparent) 78%,
     var(--bg) 100%
   );
-  pointer-events: none;
 }
 
 [data-theme="dark"] .food-bg-3d {
-  opacity: 0.65;
+  opacity: 0.2;
 }
 
 [data-theme="dark"] .food-bg-3d::after {
   background: radial-gradient(
-    ellipse 95% 85% at 50% 45%,
-    transparent 0%,
-    color-mix(in srgb, var(--bg) 45%, transparent) 58%,
+    ellipse 120% 100% at 50% 50%,
+    transparent 38%,
+    color-mix(in srgb, var(--bg) 30%, transparent) 80%,
     var(--bg) 100%
   );
+}
+
+.panel,
+.recipe,
+.suggestions,
+.auth-panel {
+  position: relative;
+  z-index: 1;
 }
 
 html,
@@ -226,6 +236,108 @@ input {
 
 .field span {
   color: var(--muted);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.suggestions {
+  margin-top: 24px;
+}
+
+.suggestions h2 {
+  margin: 0 0 12px;
+  font-size: 1.35rem;
+}
+
+.suggestions-intro {
+  margin: 0 0 20px;
+  color: var(--muted);
+}
+
+.suggestions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .suggestions-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.suggestion-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  background: var(--field);
+}
+
+.suggestion-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.suggestion-head h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.suggestion-time {
+  font-size: 0.9rem;
+  color: var(--eye-teal);
+  font-weight: 600;
+}
+
+.suggestion-tagline {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.suggestion-label {
+  margin: 0 0 8px;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.suggestion-ingredients {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggestion-ingredients li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.95rem;
+  border-bottom: 1px dashed color-mix(in srgb, var(--line) 70%, transparent);
+  padding-bottom: 4px;
+}
+
+.suggestion-ingredients li span:last-child {
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.suggestion-cook {
+  margin-top: 4px;
 }
 
 textarea,

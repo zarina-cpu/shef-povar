@@ -1,177 +1,197 @@
 "use client";
 
-import { Float, RoundedBox, Sphere } from "@react-three/drei";
+import { Float, Outlines, RoundedBox, Sphere } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 
-function Tomato({ position, speed = 1 }) {
-  const group = useRef();
-  useFrame((state) => {
-    if (!group.current) return;
-    group.current.rotation.y = state.clock.elapsedTime * 0.25 * speed;
-  });
+const FOOD_TYPES = ["tomato", "egg", "cheese", "bread", "apple", "carrot", "milk"];
+
+function scatterLayout(count, spread = 1) {
+  const items = [];
+  for (let i = 0; i < count; i += 1) {
+    const type = FOOD_TYPES[i % FOOD_TYPES.length];
+    const angle = i * 2.399963;
+    const ring = 2.2 + (i % 5) * 1.15;
+    items.push({
+      key: `${type}-${i}`,
+      type,
+      position: [
+        Math.cos(angle) * ring * spread,
+        Math.sin(angle * 0.85) * (2.8 + (i % 3) * 0.6) * spread,
+        -2.2 - (i % 4) * 0.65,
+      ],
+      speed: 0.55 + (i % 7) * 0.06,
+      spin: (i % 2 === 0 ? 1 : -1) * (0.08 + (i % 5) * 0.02),
+    });
+  }
+  return items;
+}
+
+const FULL_LAYOUT = scatterLayout(18, 1.05);
+const LITE_LAYOUT = scatterLayout(12, 0.85);
+
+function createGhostMaterial(color, outlineColor) {
+  return {
+    fill: {
+      color,
+      transparent: true,
+      opacity: 0.07,
+      roughness: 0.9,
+      metalness: 0,
+      depthWrite: false,
+    },
+    outline: {
+      color: outlineColor,
+      thickness: 0.008,
+      opacity: 0.28,
+    },
+  };
+}
+
+function OutlinedSphere({ args, material, outline, ...props }) {
   return (
-    <Float speed={1.2 * speed} rotationIntensity={0.35} floatIntensity={0.6}>
-      <group ref={group} position={position}>
-        <Sphere args={[0.55, 24, 24]}>
-          <meshStandardMaterial color="#e62222" roughness={0.45} metalness={0.05} />
-        </Sphere>
-        <mesh position={[0, 0.52, 0]}>
-          <boxGeometry args={[0.08, 0.12, 0.04]} />
-          <meshStandardMaterial color="#3d7a34" roughness={0.8} />
-        </mesh>
+    <Sphere args={args} {...props}>
+      <meshStandardMaterial {...material} />
+      <Outlines {...outline} />
+    </Sphere>
+  );
+}
+
+function FoodGlyph({ type, outlineColor, speed, spin }) {
+  const root = useRef();
+
+  useFrame((state) => {
+    if (!root.current) return;
+    root.current.rotation.y += spin * 0.004;
+    root.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.25 * speed) * 0.04;
+  });
+
+  const s = 0.36;
+
+  if (type === "tomato") {
+    const m = createGhostMaterial("#e62222", outlineColor);
+    return (
+      <group ref={root} scale={s}>
+        <OutlinedSphere args={[0.55, 12, 12]} material={m.fill} outline={m.outline} />
       </group>
-    </Float>
-  );
-}
+    );
+  }
 
-function Egg({ position, speed = 1 }) {
-  const ref = useRef();
-  useFrame((state) => {
-    if (!ref.current) return;
-    ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.4 * speed) * 0.15;
-  });
-  return (
-    <Float speed={1 * speed} rotationIntensity={0.5} floatIntensity={0.45}>
-      <group ref={ref} position={position} scale={[0.85, 1.05, 0.85]}>
-        <Sphere args={[0.42, 20, 20]}>
-          <meshStandardMaterial color="#fff8e7" roughness={0.35} metalness={0.02} />
-        </Sphere>
-        <Sphere args={[0.22, 16, 16]} position={[0, 0.05, 0.26]}>
-          <meshStandardMaterial color="#e1b12c" roughness={0.5} emissive="#e1b12c" emissiveIntensity={0.08} />
-        </Sphere>
+  if (type === "egg") {
+    const shell = createGhostMaterial("#fff8e7", outlineColor);
+    const yolk = createGhostMaterial("#e1b12c", outlineColor);
+    return (
+      <group ref={root} scale={s * 0.95}>
+        <group scale={[0.85, 1.05, 0.85]}>
+          <OutlinedSphere args={[0.42, 12, 12]} material={shell.fill} outline={shell.outline} />
+          <OutlinedSphere
+            args={[0.2, 10, 10]}
+            position={[0, 0.05, 0.22]}
+            material={yolk.fill}
+            outline={yolk.outline}
+          />
+        </group>
       </group>
-    </Float>
-  );
-}
+    );
+  }
 
-function Cheese({ position, speed = 1 }) {
-  const ref = useRef();
-  useFrame((state) => {
-    if (!ref.current) return;
-    ref.current.rotation.y = state.clock.elapsedTime * 0.3 * speed;
-  });
-  return (
-    <Float speed={0.9 * speed} rotationIntensity={0.4} floatIntensity={0.5}>
-      <mesh ref={ref} position={position} rotation={[0.4, 0.6, 0.2]}>
-        <cylinderGeometry args={[0.5, 0.5, 0.28, 3]} />
-        <meshStandardMaterial color="#ffd54a" roughness={0.55} metalness={0.03} />
-      </mesh>
-    </Float>
-  );
-}
-
-function Bread({ position, speed = 1 }) {
-  return (
-    <Float speed={1.1 * speed} rotationIntensity={0.3} floatIntensity={0.55}>
-      <RoundedBox args={[1.1, 0.45, 0.55]} radius={0.12} smoothness={4} position={position}>
-        <meshStandardMaterial color="#c68c3a" roughness={0.7} metalness={0.02} />
-      </RoundedBox>
-    </Float>
-  );
-}
-
-function Apple({ position, speed = 1 }) {
-  const ref = useRef();
-  useFrame((state) => {
-    if (!ref.current) return;
-    ref.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.35 * speed) * 0.12;
-  });
-  return (
-    <Float speed={1.15 * speed} rotationIntensity={0.45} floatIntensity={0.5}>
-      <group ref={ref} position={position}>
-        <Sphere args={[0.48, 22, 22]}>
-          <meshStandardMaterial color="#c62828" roughness={0.4} metalness={0.06} />
-        </Sphere>
-        <mesh position={[0, 0.48, 0]} rotation={[0, 0, 0.3]}>
-          <cylinderGeometry args={[0.025, 0.02, 0.14, 6]} />
-          <meshStandardMaterial color="#5d4037" roughness={0.85} />
-        </mesh>
-      </group>
-    </Float>
-  );
-}
-
-function Carrot({ position, speed = 1 }) {
-  return (
-    <Float speed={1.05 * speed} rotationIntensity={0.55} floatIntensity={0.48}>
-      <group position={position} rotation={[0.8, 0.2, -0.5]}>
+  if (type === "cheese") {
+    const m = createGhostMaterial("#ffd54a", outlineColor);
+    return (
+      <group ref={root} scale={s} rotation={[0.4, 0.6, 0.2]}>
         <mesh>
-          <coneGeometry args={[0.22, 0.95, 12]} />
-          <meshStandardMaterial color="#f57c00" roughness={0.5} />
+          <cylinderGeometry args={[0.5, 0.5, 0.28, 3]} />
+          <meshStandardMaterial {...m.fill} />
+          <Outlines {...m.outline} />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (type === "bread") {
+    const m = createGhostMaterial("#c68c3a", outlineColor);
+    return (
+      <group ref={root} scale={s * 0.9}>
+        <RoundedBox args={[1.1, 0.45, 0.55]} radius={0.1} smoothness={2}>
+          <meshStandardMaterial {...m.fill} />
+          <Outlines {...m.outline} />
+        </RoundedBox>
+      </group>
+    );
+  }
+
+  if (type === "apple") {
+    const m = createGhostMaterial("#c62828", outlineColor);
+    return (
+      <group ref={root} scale={s}>
+        <OutlinedSphere args={[0.48, 12, 12]} material={m.fill} outline={m.outline} />
+      </group>
+    );
+  }
+
+  if (type === "carrot") {
+    const m = createGhostMaterial("#f57c00", outlineColor);
+    const leaf = createGhostMaterial("#388e3c", outlineColor);
+    return (
+      <group ref={root} scale={s * 0.85} rotation={[0.8, 0.2, -0.5]}>
+        <mesh>
+          <coneGeometry args={[0.22, 0.95, 8]} />
+          <meshStandardMaterial {...m.fill} />
+          <Outlines {...m.outline} />
         </mesh>
         <mesh position={[0, 0.52, 0]}>
-          <coneGeometry args={[0.12, 0.2, 8]} />
-          <meshStandardMaterial color="#388e3c" roughness={0.75} />
+          <coneGeometry args={[0.1, 0.18, 6]} />
+          <meshStandardMaterial {...leaf.fill} />
+          <Outlines {...leaf.outline} />
         </mesh>
       </group>
-    </Float>
-  );
-}
+    );
+  }
 
-function Milk({ position, speed = 1 }) {
-  const ref = useRef();
-  useFrame((state) => {
-    if (!ref.current) return;
-    ref.current.rotation.y = -state.clock.elapsedTime * 0.22 * speed;
-  });
+  const m = createGhostMaterial("#f5f5f5", outlineColor);
   return (
-    <Float speed={0.85 * speed} rotationIntensity={0.25} floatIntensity={0.4}>
-      <group ref={ref} position={position}>
-        <RoundedBox args={[0.42, 0.75, 0.42]} radius={0.06} smoothness={3}>
-          <meshStandardMaterial color="#f5f5f5" roughness={0.4} />
-        </RoundedBox>
-        <mesh position={[0, 0.42, 0]}>
-          <coneGeometry args={[0.24, 0.18, 4]} />
-          <meshStandardMaterial color="#f5f5f5" roughness={0.4} />
-        </mesh>
-      </group>
-    </Float>
+    <group ref={root} scale={s * 0.8}>
+      <RoundedBox args={[0.42, 0.75, 0.42]} radius={0.05} smoothness={2}>
+        <meshStandardMaterial {...m.fill} />
+        <Outlines {...m.outline} />
+      </RoundedBox>
+    </group>
   );
 }
 
-const FULL_ITEMS = [
-  { key: "tomato", Component: Tomato, position: [-3.8, 1.2, -2.5], speed: 1 },
-  { key: "egg", Component: Egg, position: [3.6, -0.4, -3], speed: 1.1 },
-  { key: "cheese", Component: Cheese, position: [-2.2, -1.4, -2.8], speed: 0.95 },
-  { key: "bread", Component: Bread, position: [2.4, 1.6, -3.2], speed: 0.9 },
-  { key: "apple", Component: Apple, position: [4.2, 0.6, -2.2], speed: 1.05 },
-  { key: "carrot", Component: Carrot, position: [-4.5, -0.2, -3.5], speed: 1.15 },
-  { key: "milk", Component: Milk, position: [0.5, -1.8, -2.6], speed: 0.88 },
-  { key: "tomato2", Component: Tomato, position: [1.8, 2.1, -4], speed: 0.82 },
-];
-
-const LITE_ITEMS = [
-  { key: "tomato", Component: Tomato, position: [-2.2, 1, -2.8], speed: 0.9 },
-  { key: "egg", Component: Egg, position: [2.4, -0.6, -3], speed: 1 },
-  { key: "cheese", Component: Cheese, position: [-1.2, -1.2, -2.5], speed: 0.85 },
-  { key: "bread", Component: Bread, position: [1.6, 1.4, -3], speed: 0.88 },
-];
-
-function Scene({ lite }) {
-  const items = useMemo(() => (lite ? LITE_ITEMS : FULL_ITEMS), [lite]);
+function Scene({ lite, outlineColor }) {
+  const layout = useMemo(() => (lite ? LITE_LAYOUT : FULL_LAYOUT), [lite]);
 
   return (
     <>
-      <ambientLight intensity={0.85} />
-      <directionalLight position={[5, 8, 4]} intensity={1.1} />
-      <directionalLight position={[-4, -2, 2]} intensity={0.35} color="#fff4c4" />
-      {items.map(({ key, Component, position, speed }) => (
-        <Component key={key} position={position} speed={speed} />
+      <ambientLight intensity={0.55} />
+      <directionalLight position={[4, 6, 3]} intensity={0.45} />
+      {layout.map(({ key, type, position, speed, spin }) => (
+        <Float
+          key={key}
+          speed={0.35 * speed}
+          rotationIntensity={0.08}
+          floatIntensity={0.12}
+          position={position}
+        >
+          <FoodGlyph type={type} outlineColor={outlineColor} speed={speed} spin={spin} />
+        </Float>
       ))}
     </>
   );
 }
 
-export default function FoodBackground3DCanvas({ lite = false }) {
+export default function FoodBackground3DCanvas({ lite = false, dark = false }) {
+  const outlineColor = dark ? "#9ba4a6" : "#3d362f";
+
   return (
     <Canvas
-      camera={{ position: [0, 0, lite ? 7 : 6], fov: lite ? 48 : 42 }}
-      dpr={lite ? [1, 1.25] : [1, 1.5]}
-      gl={{ antialias: !lite, alpha: true, powerPreference: "high-performance" }}
+      camera={{ position: [0, 0, 8.5], fov: 52 }}
+      dpr={lite ? [1, 1.15] : [1, 1.35]}
+      gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       style={{ width: "100%", height: "100%", display: "block" }}
     >
-      <Scene lite={lite} />
+      <Scene lite={lite} outlineColor={outlineColor} />
     </Canvas>
   );
 }

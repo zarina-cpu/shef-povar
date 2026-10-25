@@ -51,8 +51,12 @@ export default function RecipeForm({
           rows={5}
           value={ingredients}
           onChange={(event) => setIngredients(event.target.value)}
-          placeholder="куриное филе, сыр, помидор, старая сметана"
+          placeholder="Напишите продукты, которые есть дома — например: куриное филе, сыр, помидор"
         />
+        <p className="field-hint">
+          Можно оставить пустым: выберите технику и тип блюда — шеф предложит идеи и список
+          продуктов с количеством.
+        </p>
       </label>
 
       <div className="field">
@@ -100,7 +104,11 @@ export default function RecipeForm({
       </div>
 
       <button className="submit" type="submit" disabled={loading}>
-        {loading ? "Шеф думает…" : "Придумать ужин"}
+        {loading
+          ? "Шеф думает…"
+          : ingredients.trim()
+            ? "Придумать ужин"
+            : "Подобрать идеи блюд"}
       </button>
     </form>
   );

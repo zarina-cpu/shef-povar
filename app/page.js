@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AuthBar from "@/components/AuthBar";
+import DishSuggestions from "@/components/DishSuggestions";
 import RecipeCard from "@/components/RecipeCard";
 import RecipeForm, { resolveDishType, resolveEquipment } from "@/components/RecipeForm";
 import SavedRecipes from "@/components/SavedRecipes";
@@ -35,6 +36,9 @@ export default function HomePage() {
   const [justSaved, setJustSaved] = useState(false);
   const [user, setUser] = useState(null);
   const [syncNote, setSyncNote] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsIntro, setSuggestionsIntro] = useState("");
+  const [ideasMode, setIdeasMode] = useState(false);
 
   const handleAuthChange = useCallback(async (nextUser) => {
     setUser(nextUser);
@@ -75,16 +79,41 @@ export default function HomePage() {
     setJustSaved(false);
   }
 
+  function formatIngredientsList(list) {
+    return list.map((item) => `${item.name} — ${item.amount}`).join(", ");
+  }
+
+  async function fetchRecipeForIngredients(ingredientsText, equipment, dishTypeLabel) {
+    const response = await fetch("/api/recipe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ingredients: ingredientsText,
+        equipment,
+        dishType: dishTypeLabel,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Не получилось собрать рецепт.");
+    }
+    setRecipe(data.recipe);
+    resetRecipeMeta(makeRecipeId());
+    setSuggestions([]);
+    setSuggestionsIntro("");
+    setIdeasMode(false);
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
 
     const equipment = resolveEquipment(selected, extraEquipment);
     const dishTypeLabel = resolveDishType(dishType);
-    if (!ingredients.trim()) {
-      setError("Напишите продукты, которые есть дома.");
-      return;
-    }
+    const trimmed = ingredients.trim();
+    const hasFullIngredients = trimmed.length >= 3;
+    const wantsIdeas = trimmed.length === 0;
+
     if (!equipment) {
       setError("Выберите технику или допишите свою.");
       return;
@@ -93,26 +122,66 @@ export default function HomePage() {
       setError("Выберите тип блюда.");
       return;
     }
+    if (!wantsIdeas && !hasFullIngredients) {
+      setError(
+        "Напишите продукты, которые есть дома (хотя бы одно название), или очистите поле — тогда подберём идеи блюд."
+      );
+      return;
+    }
 
     setLoading(true);
     setRecipe(null);
 
-    try {
-      const response = await fetch("/api/recipe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ingredients: ingredients.trim(),
-          equipment,
-          dishType: dishTypeLabel,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Не получилось собрать рецепт.");
+    if (wantsIdeas) {
+      setSuggestions([]);
+      setSuggestionsIntro("");
+      setIdeasMode(true);
+
+      try {
+        const response = await fetch("/api/dish-suggestions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ equipment, dishType: dishTypeLabel }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Не получилось подобрать идеи.");
+        }
+        setSuggestionsIntro(data.intro || "");
+        setSuggestions(data.dishes || []);
+      } catch (err) {
+        setError(err.message || "Не получилось подобрать идеи.");
+        setIdeasMode(false);
+      } finally {
+        setLoading(false);
       }
-      setRecipe(data.recipe);
-      resetRecipeMeta(makeRecipeId());
+      return;
+    }
+
+    setIdeasMode(false);
+    setSuggestions([]);
+    setSuggestionsIntro("");
+
+    try {
+      await fetchRecipeForIngredients(trimmed, equipment, dishTypeLabel);
+    } catch (err) {
+      setError(err.message || "Не получилось собрать рецепт.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCookFromSuggestion(dish) {
+    const equipment = resolveEquipment(selected, extraEquipment);
+    const dishTypeLabel = resolveDishType(dishType);
+    const list = formatIngredientsList(dish.ingredients);
+    setIngredients(list);
+    setError("");
+    setLoading(true);
+    setRecipe(null);
+
+    try {
+      await fetchRecipeForIngredients(list, equipment, dishTypeLabel);
     } catch (err) {
       setError(err.message || "Не получилось собрать рецепт.");
     } finally {
@@ -209,7 +278,18 @@ export default function HomePage() {
       />
 
       {error ? <p className="status error">{error}</p> : null}
-      {loading ? <p className="status">Составляю блюдо из вашего набора…</p> : null}
+      {loading ? (
+        <p className="status">
+          {ideasMode ? "Подбираю идеи блюд и списки продуктов…" : "Составляю блюдо из вашего набора…"}
+        </p>
+      ) : null}
+
+      <DishSuggestions
+        intro={suggestionsIntro}
+        dishes={suggestions}
+        loading={loading}
+        onCook={handleCookFromSuggestion}
+      />
 
       <RecipeCard
         recipe={recipe}
