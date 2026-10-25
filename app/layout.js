@@ -1,4 +1,5 @@
 import "./globals.css";
+import FoodBackground3D from "@/components/FoodBackground3D";
 import Providers from "@/components/Providers";
 
 export const metadata = {
@@ -23,7 +24,10 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <FoodBackground3D />
+        <div className="app-shell">
+          <Providers>{children}</Providers>
+        </div>
       </body>
     </html>
   );

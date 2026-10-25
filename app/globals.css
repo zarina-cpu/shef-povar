@@ -59,6 +59,53 @@ body {
   line-height: 1.55;
 }
 
+.app-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.food-bg-3d {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.92;
+  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.food-bg-3d canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.food-bg-3d::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 95% 85% at 50% 45%,
+    transparent 0%,
+    color-mix(in srgb, var(--bg) 35%, transparent) 55%,
+    var(--bg) 100%
+  );
+  pointer-events: none;
+}
+
+[data-theme="dark"] .food-bg-3d {
+  opacity: 0.65;
+}
+
+[data-theme="dark"] .food-bg-3d::after {
+  background: radial-gradient(
+    ellipse 95% 85% at 50% 45%,
+    transparent 0%,
+    color-mix(in srgb, var(--bg) 45%, transparent) 58%,
+    var(--bg) 100%
+  );
+}
+
 html,
 body,
 .panel,
