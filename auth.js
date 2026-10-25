@@ -3,29 +3,20 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { isCloudAuthConfigured, isGoogleAuthReady } from "@/lib/auth/config";
-import { findUserByEmail, upsertOAuthUser } from "@/lib/turso/users";
+import { findUserByEmail, findUserById, upsertOAuthUser } from "@/lib/turso/users";
 
-/** В JWT-cookie нельзя класть base64 — иначе 494 REQUEST_HEADER_TOO_LARGE на Vercel */
-function pictureForJwtCookie(image) {
-  if (typeof image !== "string" || !image) {
-    return undefined;
-  }
-  if (image.startsWith("data:") || image.length > 480) {
-    return undefined;
-  }
-  return image;
+/** Фото только в Turso + GET /api/profile/avatar — never in JWT (494 on Vercel) */
+function stripHeavyJwtFields(token) {
+  delete token.picture;
+  delete token.image;
+  return token;
 }
 
-function sanitizeTokenPicture(token) {
-  if (typeof token.picture === "string") {
-    const safe = pictureForJwtCookie(token.picture);
-    if (safe) {
-      token.picture = safe;
-    } else {
-      delete token.picture;
-    }
+function httpAvatarOnly(image) {
+  if (typeof image !== "string" || !image.startsWith("http")) {
+    return null;
   }
-  return token;
+  return image.length <= 512 ? image : null;
 }
 
 const providers = [
@@ -56,7 +47,6 @@ const providers = [
         id: user.id,
         email: user.email,
         name: user.name,
-        image: user.image,
       };
     },
   }),
@@ -75,6 +65,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  cookies: {
+    sessionToken: {
+      name: "shef-povar.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   providers,
   callbacks: {
     async signIn({ account, profile }) {
@@ -91,43 +92,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     async jwt({ token, user, account, profile, trigger }) {
+      stripHeavyJwtFields(token);
+
       if (trigger === "update") {
         token.avatarRev = (token.avatarRev || 0) + 1;
-        return sanitizeTokenPicture(token);
+        return token;
       }
       if (account?.provider === "google" && profile?.email) {
         const dbUser = await findUserByEmail(profile.email);
         if (dbUser) {
           token.sub = dbUser.id;
-          const fromDb = pictureForJwtCookie(dbUser.image);
-          if (fromDb) {
-            token.picture = fromDb;
-          }
-        }
-        if (!token.picture && profile.picture) {
-          token.picture = pictureForJwtCookie(profile.picture);
         }
         if (profile.name) {
           token.name = profile.name;
         }
-        return sanitizeTokenPicture(token);
+        if (profile.email) {
+          token.email = profile.email;
+        }
+        return token;
       }
       if (user?.id) {
         token.sub = user.id;
       }
-      const fromUser = pictureForJwtCookie(user?.image);
-      if (fromUser) {
-        token.picture = fromUser;
+      if (user?.email) {
+        token.email = user.email;
       }
-      return sanitizeTokenPicture(token);
+      if (user?.name) {
+        token.name = user.name;
+      }
+      return token;
     },
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
       }
-      if (session.user) {
-        const safe = pictureForJwtCookie(token.picture);
-        session.user.image = safe || null;
+      session.user.image = null;
+      if (session.user && token.sub) {
+        const dbUser = await findUserById(token.sub);
+        const avatar = httpAvatarOnly(dbUser?.image);
+        if (avatar) {
+          session.user.image = avatar;
+        }
       }
       return session;
     },

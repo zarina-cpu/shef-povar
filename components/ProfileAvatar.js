@@ -90,8 +90,8 @@ async function prepareAvatarUpload(file) {
   }
   dataUrl = await compressImageFile(file, 640, 0.75);
   approxBytes = Math.ceil(String(dataUrl).length * 0.75);
-  if (approxBytes > MAX_AVATAR_BYTES) {
-    throw new Error("Не удалось уложить фото в 8 МБ. Попробуйте другое изображение.");
+  if (approxBytes > 600_000) {
+    dataUrl = await compressImageFile(file, 480, 0.7);
   }
   return dataUrl;
 }

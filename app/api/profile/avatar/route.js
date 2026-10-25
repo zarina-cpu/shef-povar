@@ -4,7 +4,8 @@ import { findUserById, updateUserImage } from "@/lib/turso/users";
 
 export const runtime = "nodejs";
 
-const MAX_BYTES = 8 * 1024 * 1024;
+/** В БД — сжатое фото; 8 МБ только на выбор файла, храним до ~600 КБ */
+const MAX_BYTES = 600_000;
 const DATA_URL_RE = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/;
 
 function unauthorized() {
@@ -59,7 +60,7 @@ export async function POST(request) {
   const bytes = Buffer.from(match[2].replace(/\s/g, ""), "base64");
   if (bytes.length > MAX_BYTES) {
     return Response.json({
-      error: "Фото больше 8 МБ. Выберите файл меньше или сожмите его.",
+      error: "Фото слишком большое после сжатия. Выберите другое изображение.",
     }, { status: 400 });
   }
 
