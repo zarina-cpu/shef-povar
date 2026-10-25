@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { buildPrompt, parseRecipe } from "@/lib/gemini";
 import { generateGeminiText } from "@/lib/geminiGenerate";
-import { consumeRecipeCooldown } from "@/lib/recipeRateLimit";
+import { consumeRecipeCooldown, releaseRecipeCooldown } from "@/lib/recipeRateLimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -64,14 +64,26 @@ export async function POST(request) {
   const prompt = buildPrompt(ingredients, equipment, dishType, avoidTitles);
   const temperature = avoidTitles.length ? 0.92 : 0.75;
 
+  const geminiOpts = {
+    temperature,
+    maxOutputTokens: 2048,
+    attemptTimeoutMs: process.env.VERCEL ? 9000 : 25000,
+    deadlineMs: process.env.VERCEL ? 9500 : 50000,
+    attemptsPerModel: 1,
+  };
+
   try {
-    const text = await generateGeminiText(apiKey, prompt, {
-      temperature,
-      maxOutputTokens: 3072,
-    });
+    const text = await generateGeminiText(apiKey, prompt, geminiOpts);
     const recipe = parseRecipe(text);
     return Response.json({ recipe });
   } catch (error) {
+    if (userId) {
+      try {
+        await releaseRecipeCooldown(userId);
+      } catch {
+        /* лимит останется — редкий сбой БД */
+      }
+    }
     return Response.json(
       { error: error.message || "Не получилось собрать рецепт." },
       { status: 502 }

@@ -39,7 +39,10 @@ export async function POST(request) {
   try {
     const text = await generateGeminiText(apiKey, prompt, {
       temperature: 0.8,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 3072,
+      attemptTimeoutMs: process.env.VERCEL ? 9000 : 25000,
+      deadlineMs: process.env.VERCEL ? 9500 : 50000,
+      attemptsPerModel: 1,
     });
     const data = parseSuggestions(text);
     return Response.json(data);

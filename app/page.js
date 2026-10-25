@@ -42,7 +42,7 @@ export default function HomePage() {
 
   async function postJson(url, payload) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 55000);
+    const timer = setTimeout(() => controller.abort(), 28000);
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -50,7 +50,18 @@ export default function HomePage() {
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
-      const data = await response.json();
+      let data = {};
+      try {
+        data = await response.json();
+      } catch {
+        if (!response.ok) {
+          throw new Error(
+            response.status === 504
+              ? "Сервер не успел ответить вовремя. Попробуйте ещё раз."
+              : "Ошибка сервера. Попробуйте ещё раз."
+          );
+        }
+      }
       if (!response.ok) {
         const err = new Error(data.error || "Ошибка сервера.");
         if (typeof data.retryAfterSec === "number") {
@@ -61,7 +72,9 @@ export default function HomePage() {
       return data;
     } catch (err) {
       if (err?.name === "AbortError") {
-        throw new Error("Долго нет ответа от шефа. Попробуйте ещё раз через минуту.");
+        throw new Error(
+          "Долго нет ответа от шефа — слабый интернет или сервер не успел. Попробуйте ещё раз через минуту."
+        );
       }
       throw err;
     } finally {
