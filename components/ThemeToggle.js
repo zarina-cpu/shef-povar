@@ -8,7 +8,7 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
 }
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ compact = false }) {
   const [theme, setTheme] = useState("light");
 
   useEffect(() => {
@@ -26,7 +26,11 @@ export default function ThemeToggle() {
   }
 
   return (
-    <button className="theme-toggle" type="button" onClick={toggle}>
+    <button
+      className={compact ? "theme-toggle theme-toggle--compact" : "theme-toggle"}
+      type="button"
+      onClick={toggle}
+    >
       {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
     </button>
   );

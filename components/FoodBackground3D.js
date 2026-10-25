@@ -8,17 +8,8 @@ const FoodBackground3DCanvas = dynamic(() => import("./FoodBackground3DCanvas"),
   loading: () => null,
 });
 
-function readAccentColor() {
-  if (typeof document === "undefined") {
-    return "#32b3b3";
-  }
-  const css = getComputedStyle(document.documentElement).getPropertyValue("--eye-teal").trim();
-  return css || "#32b3b3";
-}
-
 export default function FoodBackground3D() {
   const [mode, setMode] = useState("off");
-  const [accentColor, setAccentColor] = useState("#32b3b3");
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -28,12 +19,6 @@ export default function FoodBackground3D() {
     }
     const mobile = window.matchMedia("(max-width: 640px)").matches;
     setMode(mobile ? "lite" : "full");
-    setAccentColor(readAccentColor());
-
-    const root = document.documentElement;
-    const observer = new MutationObserver(() => setAccentColor(readAccentColor()));
-    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
   }, []);
 
   if (mode === "off") {
@@ -42,7 +27,7 @@ export default function FoodBackground3D() {
 
   return (
     <div className="food-bg-3d" aria-hidden="true">
-      <FoodBackground3DCanvas lite={mode === "lite"} accentColor={accentColor} />
+      <FoodBackground3DCanvas lite={mode === "lite"} />
     </div>
   );
 }

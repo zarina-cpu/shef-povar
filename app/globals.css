@@ -65,12 +65,28 @@ body {
   isolation: isolate;
 }
 
+@keyframes food-bg-float {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(3deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
 .food-bg-3d {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.24;
+  background: transparent;
+  opacity: 1;
   overflow: hidden;
   min-height: 100vh;
   min-height: 100dvh;
@@ -79,12 +95,12 @@ body {
 .food-bg-3d canvas {
   width: 100% !important;
   height: 100% !important;
+  min-height: 100dvh;
   pointer-events: none;
+  background: transparent !important;
 }
 
-[data-theme="dark"] .food-bg-3d {
-  opacity: 0.22;
-}
+/* Покачивание в Canvas (Three.js) — те же 5.5–9s ease-in-out, см. FoodBackground3DCanvas */
 
 .panel,
 .recipe,
@@ -157,11 +173,9 @@ input {
   top: 0;
   right: 0;
   display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  max-width: min(100%, 22rem);
+  align-items: flex-end;
+  max-width: min(100%, 14rem);
 }
 
 .brand h1 {
@@ -195,6 +209,11 @@ input {
 .theme-toggle:focus-visible {
   border-color: var(--accent);
   outline: none;
+}
+
+.theme-toggle--compact {
+  padding: 8px 14px;
+  font-size: 0.85rem;
 }
 
 .panel {
@@ -604,22 +623,65 @@ textarea:focus,
   font-weight: 600;
 }
 
-.auth-bar {
+.header-profile {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 
-.auth-user {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted);
-  max-width: 10rem;
+.profile-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.profile-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--chip-border);
+  background: var(--paper);
+  box-shadow: 0 2px 8px rgba(38, 33, 28, 0.08);
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+
+[data-theme="dark"] .profile-avatar {
+  border-color: var(--line);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.profile-avatar-initial {
+  font-family: "Jost", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.profile-avatar-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.profile-signout {
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 

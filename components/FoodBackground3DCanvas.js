@@ -1,41 +1,46 @@
 "use client";
 
-import { OrthographicCamera, Outlines, RoundedBox, Sphere } from "@react-three/drei";
+import { OrthographicCamera, Outlines, RoundedBox } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-/** Как кнопка «Хочу приготовить» — --eye-teal */
-const WANT_COOK_COLOR = "#32b3b3";
+/** Бирюза контуров фона — строго #32B3B3 */
+const OUTLINE_TEAL = "#32B3B3";
+const OUTLINE_OPACITY = 0.42;
 
-const FOOD_TYPES = ["tomato", "egg", "cheese", "bread", "apple", "carrot", "milk"];
+const FOOD_TYPES = ["tomato", "wine", "pizza", "milk", "bread", "carrot", "apple", "cheese", "egg"];
+const CAMERA_ZOOM = 12.5;
 
 function seeded01(index, salt = 0) {
   const x = Math.sin((index + salt) * 127.1) * 43758.5453;
   return x - Math.floor(x);
 }
 
-/** Рассыпь по всему полю, как doodle-паттерн на референсе */
-function doodleLayout(count, aspect) {
-  const radiusX = 6.8 * Math.max(aspect, 1);
-  const radiusY = 5.6;
-  const phi = Math.PI * (3 - Math.sqrt(5));
+/** Сетка на всю видимую область orthographic-камеры (ширина = viewport / zoom) */
+function fullBackgroundLayout(count, viewport, zoom) {
+  const aspect = Math.max(viewport.w / viewport.h, 0.75);
+  const spanX = (viewport.w / zoom) * 0.98;
+  const spanY = (viewport.h / zoom) * 0.96;
+  const cols = Math.max(4, Math.ceil(Math.sqrt(count * aspect * 1.15)));
+  const rows = Math.ceil(count / cols);
+  const cellW = spanX / Math.max(cols - 1, 1);
+  const cellH = spanY / Math.max(rows - 1, 1);
   const items = [];
 
   for (let i = 0; i < count; i += 1) {
-    const type = FOOD_TYPES[i % FOOD_TYPES.length];
-    const t = (i + 0.5) / count;
-    const r = Math.sqrt(t);
-    const theta = phi * i;
-    let x = r * Math.cos(theta) * radiusX;
-    let y = r * Math.sin(theta) * radiusY;
-    x += (seeded01(i, 1) - 0.5) * 1.4;
-    y += (seeded01(i, 2) - 0.5) * 1.1;
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const type = FOOD_TYPES[(i + Math.floor(cols / 2)) % FOOD_TYPES.length];
+    const u = cols <= 1 ? 0.5 : col / (cols - 1);
+    const v = rows <= 1 ? 0.5 : row / (rows - 1);
+    const x = (u - 0.5) * spanX + (seeded01(i, 1) - 0.5) * cellW * 0.38;
+    const y = (v - 0.5) * spanY + (seeded01(i, 2) - 0.5) * cellH * 0.38;
 
-    const hero = i % 6 === 0;
-    const scale = (hero ? 0.38 : 0.24) + seeded01(i, 3) * 0.12;
+    const hero = i % 5 === 0;
+    const scale = (hero ? 1.78 : 1.4) + seeded01(i, 3) * 0.32;
     const rotZ = (seeded01(i, 4) - 0.5) * Math.PI * 1.35;
-    const rotX = (seeded01(i, 5) - 0.5) * 0.25;
-    const rotY = (seeded01(i, 6) - 0.5) * 0.35;
+    const rotX = (seeded01(i, 5) - 0.5) * 0.28;
+    const rotY = (seeded01(i, 6) - 0.5) * 0.38;
 
     items.push({
       key: `${type}-${i}`,
@@ -43,139 +48,289 @@ function doodleLayout(count, aspect) {
       position: [x, y, 0],
       scale,
       rotation: [rotX, rotY, rotZ],
-      spin: (seeded01(i, 7) - 0.5) * 0.025,
+      floatDelay: seeded01(i, 8) * 6,
+      floatDuration: 5.5 + seeded01(i, 9) * 3.5,
+      floatAmpY: 0.2 + seeded01(i, 10) * 0.14,
+      floatAmpX: 0.06 + seeded01(i, 11) * 0.1,
     });
   }
 
   return items;
 }
 
-function createGhostMaterial(color = WANT_COOK_COLOR) {
-  return {
-    fill: {
-      color,
-      transparent: true,
-      opacity: 0.04,
-      roughness: 1,
-      metalness: 0,
-      depthWrite: false,
-    },
-    outline: {
-      color,
-      thickness: 0.007,
-      opacity: 0.5,
-    },
-  };
-}
+const outlineProps = {
+  color: OUTLINE_TEAL,
+  thickness: 0.019,
+  opacity: OUTLINE_OPACITY,
+};
 
-function OutlinedSphere({ args, material, outline, ...props }) {
+/** Заливка не рисуется — только контур Outlines */
+const invisibleFill = {
+  color: OUTLINE_TEAL,
+  transparent: true,
+  opacity: 0,
+  depthWrite: false,
+  colorWrite: false,
+};
+
+function OutlineShell({ children, ...props }) {
   return (
-    <Sphere args={args} {...props}>
-      <meshStandardMaterial {...material} />
-      <Outlines {...outline} />
-    </Sphere>
+    <mesh {...props}>
+      {children}
+      <meshBasicMaterial {...invisibleFill} />
+      <Outlines {...outlineProps} />
+    </mesh>
   );
 }
 
-function FoodGlyph({ type, ghost, scale, rotation, spin }) {
-  const root = useRef();
-
-  useFrame((state) => {
-    if (!root.current) return;
-    root.current.rotation.z += spin * 0.002;
-  });
-
-  const s = scale;
-  const m = ghost;
-
+function OutlinedSphere({ args, ...props }) {
   return (
-    <group ref={root} scale={s} rotation={rotation}>
-      {type === "tomato" && (
-        <OutlinedSphere args={[0.55, 10, 10]} material={m.fill} outline={m.outline} />
-      )}
-      {type === "egg" && (
-        <group scale={[0.85, 1.05, 0.85]}>
-          <OutlinedSphere args={[0.42, 10, 10]} material={m.fill} outline={m.outline} />
-          <OutlinedSphere
-            args={[0.2, 8, 8]}
-            position={[0, 0.05, 0.22]}
-            material={m.fill}
-            outline={m.outline}
-          />
-        </group>
-      )}
-      {type === "cheese" && (
-        <group rotation={[0.4, 0.6, 0.2]}>
-          <mesh>
-            <cylinderGeometry args={[0.5, 0.5, 0.28, 3]} />
-            <meshStandardMaterial {...m.fill} />
-            <Outlines {...m.outline} />
-          </mesh>
-        </group>
-      )}
-      {type === "bread" && (
-        <RoundedBox args={[1.1, 0.45, 0.55]} radius={0.1} smoothness={2}>
-          <meshStandardMaterial {...m.fill} />
-          <Outlines {...m.outline} />
-        </RoundedBox>
-      )}
-      {type === "apple" && (
-        <OutlinedSphere args={[0.48, 10, 10]} material={m.fill} outline={m.outline} />
-      )}
-      {type === "carrot" && (
-        <group rotation={[0.8, 0.2, -0.5]}>
-          <mesh>
-            <coneGeometry args={[0.22, 0.95, 8]} />
-            <meshStandardMaterial {...m.fill} />
-            <Outlines {...m.outline} />
-          </mesh>
-          <mesh position={[0, 0.52, 0]}>
-            <coneGeometry args={[0.1, 0.18, 6]} />
-            <meshStandardMaterial {...m.fill} />
-            <Outlines {...m.outline} />
-          </mesh>
-        </group>
-      )}
-      {type === "milk" && (
-        <RoundedBox args={[0.42, 0.75, 0.42]} radius={0.05} smoothness={2}>
-          <meshStandardMaterial {...m.fill} />
-          <Outlines {...m.outline} />
-        </RoundedBox>
-      )}
+    <OutlineShell {...props}>
+      <sphereGeometry args={args} />
+    </OutlineShell>
+  );
+}
+
+function OutlinedRoundedBox({ args, radius = 0.08, smoothness = 2, ...props }) {
+  return (
+    <RoundedBox args={args} radius={radius} smoothness={smoothness} {...props}>
+      <meshBasicMaterial {...invisibleFill} />
+      <Outlines {...outlineProps} />
+    </RoundedBox>
+  );
+}
+
+function TomatoShape() {
+  return (
+    <group>
+      <OutlinedSphere args={[0.52, 14, 14]} scale={[1, 0.88, 1]} />
+      <OutlineShell position={[0, 0.46, 0.08]} rotation={[0.15, 0, 0]}>
+        <cylinderGeometry args={[0.04, 0.05, 0.12, 6]} />
+      </OutlineShell>
+      <OutlineShell position={[0.1, 0.5, 0.1]} rotation={[0.5, 0, -0.8]}>
+        <coneGeometry args={[0.08, 0.16, 4]} />
+      </OutlineShell>
+      <OutlineShell position={[-0.08, 0.48, 0.12]} rotation={[0.4, 0.2, 0.7]}>
+        <coneGeometry args={[0.07, 0.14, 4]} />
+      </OutlineShell>
     </group>
   );
 }
 
-function Scene({ lite, accentColor, aspect }) {
-  const count = lite ? 26 : 32;
-  const layout = useMemo(() => doodleLayout(count, aspect), [lite, aspect, count]);
-  const ghost = useMemo(() => createGhostMaterial(accentColor), [accentColor]);
+function WineShape() {
+  return (
+    <group>
+      <OutlineShell position={[0, -0.12, 0]}>
+        <cylinderGeometry args={[0.3, 0.34, 0.68, 14]} />
+      </OutlineShell>
+      <OutlineShell position={[0, 0.32, 0]}>
+        <cylinderGeometry args={[0.34, 0.14, 0.24, 14]} />
+      </OutlineShell>
+      <OutlineShell position={[0, 0.52, 0]}>
+        <cylinderGeometry args={[0.1, 0.1, 0.36, 10]} />
+      </OutlineShell>
+      <OutlineShell position={[0, 0.74, 0]}>
+        <cylinderGeometry args={[0.12, 0.12, 0.14, 10]} />
+      </OutlineShell>
+    </group>
+  );
+}
+
+function PizzaShape() {
+  const sliceStart = 0.15;
+  const sliceAngle = Math.PI / 3.2;
+  return (
+    <group rotation={[Math.PI / 2.2, 0.35, 0]}>
+      <OutlineShell>
+        <cylinderGeometry args={[0.82, 0.82, 0.1, 20, 1, false, sliceStart, sliceAngle]} />
+      </OutlineShell>
+      <OutlineShell position={[0, 0.04, 0]}>
+        <cylinderGeometry args={[0.92, 0.92, 0.16, 20, 1, false, sliceStart, sliceAngle]} />
+      </OutlineShell>
+      <OutlinedSphere args={[0.09, 8, 8]} position={[0.22, 0.12, 0.15]} />
+      <OutlinedSphere args={[0.08, 8, 8]} position={[0.38, 0.11, -0.05]} />
+      <OutlinedSphere args={[0.07, 8, 8]} position={[0.12, 0.11, -0.18]} />
+    </group>
+  );
+}
+
+function MilkShape() {
+  return (
+    <group>
+      <OutlinedRoundedBox args={[0.52, 0.78, 0.34]} radius={0.04} position={[0, -0.04, 0]} />
+      <OutlineShell position={[-0.14, 0.38, 0]} rotation={[0, 0, 0.55]}>
+        <boxGeometry args={[0.34, 0.06, 0.36]} />
+      </OutlineShell>
+      <OutlineShell position={[0.14, 0.38, 0]} rotation={[0, 0, -0.55]}>
+        <boxGeometry args={[0.34, 0.06, 0.36]} />
+      </OutlineShell>
+      <OutlineShell position={[0, 0.48, 0]}>
+        <coneGeometry args={[0.1, 0.14, 4]} />
+      </OutlineShell>
+    </group>
+  );
+}
+
+function BreadShape() {
+  return (
+    <group rotation={[0, 0.25, 0]}>
+      <OutlinedRoundedBox args={[1.05, 0.42, 0.48]} radius={0.16} position={[0, -0.06, 0]} />
+      <OutlinedRoundedBox args={[0.88, 0.28, 0.42]} radius={0.14} position={[0, 0.22, 0]} />
+      <OutlineShell position={[-0.2, 0.28, 0.22]} rotation={[0, 0, 0.35]}>
+        <boxGeometry args={[0.04, 0.32, 0.02]} />
+      </OutlineShell>
+      <OutlineShell position={[0.05, 0.3, 0.22]} rotation={[0, 0, -0.15]}>
+        <boxGeometry args={[0.04, 0.28, 0.02]} />
+      </OutlineShell>
+      <OutlineShell position={[0.28, 0.26, 0.22]} rotation={[0, 0, 0.25]}>
+        <boxGeometry args={[0.04, 0.26, 0.02]} />
+      </OutlineShell>
+    </group>
+  );
+}
+
+function CarrotShape() {
+  return (
+    <group rotation={[0.75, 0.15, -0.45]}>
+      <OutlineShell>
+        <coneGeometry args={[0.2, 0.92, 10]} />
+      </OutlineShell>
+      <OutlineShell position={[0.06, 0.48, 0.02]} rotation={[0, 0, -0.4]}>
+        <coneGeometry args={[0.06, 0.22, 5]} />
+      </OutlineShell>
+      <OutlineShell position={[-0.05, 0.5, -0.02]} rotation={[0.2, 0, 0.5]}>
+        <coneGeometry args={[0.05, 0.2, 5]} />
+      </OutlineShell>
+      <OutlineShell position={[0, 0.52, 0.06]} rotation={[-0.3, 0, 0]}>
+        <coneGeometry args={[0.05, 0.18, 5]} />
+      </OutlineShell>
+    </group>
+  );
+}
+
+function AppleShape() {
+  return (
+    <group>
+      <OutlinedSphere args={[0.5, 14, 14]} scale={[0.96, 1, 0.96]} />
+      <OutlineShell position={[0.02, 0.46, 0.08]}>
+        <cylinderGeometry args={[0.03, 0.04, 0.14, 6]} />
+      </OutlineShell>
+      <OutlineShell position={[0.12, 0.52, 0.1]} rotation={[0.3, 0, -1.1]}>
+        <coneGeometry args={[0.09, 0.18, 4]} />
+      </OutlineShell>
+    </group>
+  );
+}
+
+function CheeseShape() {
+  return (
+    <group rotation={[0.5, 0.55, 0.35]}>
+      <OutlineShell>
+        <cylinderGeometry args={[0.55, 0.55, 0.32, 3]} />
+      </OutlineShell>
+      <OutlineShell position={[0.18, 0.08, 0.12]}>
+        <sphereGeometry args={[0.07, 8, 8]} />
+      </OutlineShell>
+      <OutlineShell position={[-0.08, -0.04, 0.14]}>
+        <sphereGeometry args={[0.06, 8, 8]} />
+      </OutlineShell>
+      <OutlineShell position={[0.02, 0.12, -0.1]}>
+        <sphereGeometry args={[0.05, 8, 8]} />
+      </OutlineShell>
+    </group>
+  );
+}
+
+function EggShape() {
+  return (
+    <group scale={[0.82, 1.08, 0.82]}>
+      <OutlinedSphere args={[0.44, 14, 14]} />
+    </group>
+  );
+}
+
+const FOOD_SHAPES = {
+  tomato: TomatoShape,
+  wine: WineShape,
+  pizza: PizzaShape,
+  milk: MilkShape,
+  bread: BreadShape,
+  carrot: CarrotShape,
+  apple: AppleShape,
+  cheese: CheeseShape,
+  egg: EggShape,
+};
+
+function FoodGlyph({ type, scale, rotation, floatDelay, floatDuration, floatAmpY, floatAmpX }) {
+  const root = useRef();
+  const baseRotZ = rotation[2];
+
+  useFrame((state) => {
+    if (!root.current) return;
+    const t = state.clock.elapsedTime + floatDelay;
+    const angle = (t * Math.PI * 2) / floatDuration;
+    const driftY = Math.sin(angle) * floatAmpY;
+    const driftX = Math.sin(angle * 0.72 + floatDelay) * floatAmpX;
+    root.current.position.set(driftX, driftY, 0);
+    root.current.rotation.z = baseRotZ + Math.sin(angle) * 0.052;
+  });
+
+  const s = scale;
+  const Shape = FOOD_SHAPES[type] ?? TomatoShape;
+
+  return (
+    <group ref={root} scale={s} rotation={rotation}>
+      <Shape />
+    </group>
+  );
+}
+
+function Scene({ lite, viewport }) {
+  const count = lite ? 30 : 42;
+  const layout = useMemo(
+    () => fullBackgroundLayout(count, viewport, CAMERA_ZOOM),
+    [lite, viewport.w, viewport.h, count]
+  );
 
   return (
     <>
-      <OrthographicCamera makeDefault position={[0, 0, 10]} zoom={42} near={0.1} far={100} />
+      <OrthographicCamera makeDefault position={[0, 0, 10]} zoom={CAMERA_ZOOM} near={0.1} far={100} />
       <ambientLight intensity={0.65} />
-      {layout.map(({ key, type, position, scale, rotation, spin }) => (
-        <group key={key} position={position}>
-          <FoodGlyph
-            type={type}
-            ghost={ghost}
-            scale={scale}
-            rotation={rotation}
-            spin={spin}
-          />
-        </group>
-      ))}
+      {layout.map(
+        ({
+          key,
+          type,
+          position,
+          scale,
+          rotation,
+          floatDelay,
+          floatDuration,
+          floatAmpY,
+          floatAmpX,
+        }) => (
+          <group key={key} position={position}>
+            <FoodGlyph
+              type={type}
+              scale={scale}
+              rotation={rotation}
+              floatDelay={floatDelay}
+              floatDuration={floatDuration}
+              floatAmpY={floatAmpY}
+              floatAmpX={floatAmpX}
+            />
+          </group>
+        )
+      )}
     </>
   );
 }
 
-export default function FoodBackground3DCanvas({ lite = false, accentColor = WANT_COOK_COLOR }) {
-  const [aspect, setAspect] = useState(1.6);
+export default function FoodBackground3DCanvas({ lite = false }) {
+  const [viewport, setViewport] = useState({ w: 1280, h: 800 });
 
   useEffect(() => {
     function update() {
-      setAspect(Math.max(window.innerWidth / window.innerHeight, 0.75));
+      setViewport({ w: window.innerWidth, h: window.innerHeight });
     }
     update();
     window.addEventListener("resize", update);
@@ -186,9 +341,12 @@ export default function FoodBackground3DCanvas({ lite = false, accentColor = WAN
     <Canvas
       dpr={lite ? [1, 1.15] : [1, 1.35]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-      style={{ width: "100%", height: "100%", display: "block" }}
+      onCreated={({ gl }) => {
+        gl.setClearColor(0x000000, 0);
+      }}
+      style={{ width: "100%", height: "100%", display: "block", background: "transparent" }}
     >
-      <Scene lite={lite} accentColor={accentColor} aspect={aspect} />
+      <Scene lite={lite} viewport={viewport} />
     </Canvas>
   );
 }

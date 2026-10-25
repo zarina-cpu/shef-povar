@@ -6,7 +6,6 @@ import DishSuggestions from "@/components/DishSuggestions";
 import RecipeCard from "@/components/RecipeCard";
 import RecipeForm, { resolveDishTypes, resolveEquipment } from "@/components/RecipeForm";
 import SavedRecipes from "@/components/SavedRecipes";
-import ThemeToggle from "@/components/ThemeToggle";
 import {
   deleteRecipeOnServer,
   fetchRemoteRecipes,
@@ -58,12 +57,31 @@ export default function HomePage() {
       const merged = mergeRecipeLists(local, remote);
       writeSavedRecipes(merged);
       setSavedRecipes(merged);
+      let uploadErrors = 0;
       for (const entry of merged) {
-        await pushRecipeToServer(entry);
+        try {
+          const ok = await pushRecipeToServer(entry);
+          if (!ok) {
+            uploadErrors += 1;
+          }
+        } catch {
+          uploadErrors += 1;
+        }
       }
-      setSyncNote("Рецепты синхронизированы с облаком.");
-    } catch {
-      setSyncNote("Локальные рецепты на месте; облако временно недоступно.");
+      if (uploadErrors > 0) {
+        setSyncNote("Рецепты загружены из облака; часть не удалось отправить на сервер.");
+      } else {
+        setSyncNote("Рецепты синхронизированы с облаком.");
+      }
+    } catch (err) {
+      const message = err?.message || "";
+      if (/Turso|TURSO|503/.test(message)) {
+        setSyncNote("Вход выполнен. На сервере не настроен Turso — проверьте переменные на Vercel.");
+      } else if (message) {
+        setSyncNote(`Локальные рецепты на месте. Облако: ${message}`);
+      } else {
+        setSyncNote("Локальные рецепты на месте; облако временно недоступно.");
+      }
     }
   }, []);
 
@@ -260,7 +278,6 @@ export default function HomePage() {
       <header className="header">
         <div className="header-actions">
           <AuthBar onAuthChange={handleAuthChange} />
-          <ThemeToggle />
         </div>
         <div className="brand">
           <h1>Шеф из того, что есть дома</h1>
