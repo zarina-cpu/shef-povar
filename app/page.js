@@ -34,7 +34,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [user, setUser] = useState(null);
-  const [syncNote, setSyncNote] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsIntro, setSuggestionsIntro] = useState("");
   const [ideasMode, setIdeasMode] = useState(false);
@@ -43,7 +42,6 @@ export default function HomePage() {
     setUser(nextUser);
     if (!nextUser) {
       setSavedRecipes(loadSavedRecipes());
-      setSyncNote("");
       return;
     }
 
@@ -57,31 +55,15 @@ export default function HomePage() {
       const merged = mergeRecipeLists(local, remote);
       writeSavedRecipes(merged);
       setSavedRecipes(merged);
-      let uploadErrors = 0;
       for (const entry of merged) {
         try {
-          const ok = await pushRecipeToServer(entry);
-          if (!ok) {
-            uploadErrors += 1;
-          }
+          await pushRecipeToServer(entry);
         } catch {
-          uploadErrors += 1;
+          /* пропускаем отдельный рецепт */
         }
       }
-      if (uploadErrors > 0) {
-        setSyncNote("Рецепты загружены из облака; часть не удалось отправить на сервер.");
-      } else {
-        setSyncNote("Рецепты синхронизированы с облаком.");
-      }
-    } catch (err) {
-      const message = err?.message || "";
-      if (/Turso|TURSO|503/.test(message)) {
-        setSyncNote("Вход выполнен. На сервере не настроен Turso — проверьте переменные на Vercel.");
-      } else if (message) {
-        setSyncNote(`Локальные рецепты на месте. Облако: ${message}`);
-      } else {
-        setSyncNote("Локальные рецепты на месте; облако временно недоступно.");
-      }
+    } catch {
+      /* синхронизация в фоне, без сообщения в интерфейсе */
     }
   }, []);
 
@@ -232,9 +214,8 @@ export default function HomePage() {
     if (user) {
       try {
         await pushRecipeToServer(entry);
-        setSyncNote("Сохранено на всех ваших устройствах.");
       } catch {
-        setSyncNote("Сохранено локально; повторите позже для облака.");
+        /* локальная копия уже сохранена */
       }
     }
   }
@@ -268,7 +249,7 @@ export default function HomePage() {
       try {
         await deleteRecipeOnServer(id);
       } catch {
-        setSyncNote("Удалено локально; на сервере может остаться копия.");
+        /* локально уже удалено */
       }
     }
   }
@@ -281,11 +262,9 @@ export default function HomePage() {
         </div>
         <div className="brand">
           <h1>Шеф из того, что есть дома</h1>
-          <p>Список продуктов и техника — на выходе ужин с названием, шагами и калориями.</p>
+          <p>Создай идеальный ужин из того, что под рукой.</p>
         </div>
       </header>
-
-      {syncNote ? <p className="status">{syncNote}</p> : null}
 
       <RecipeForm
         ingredients={ingredients}

@@ -117,7 +117,7 @@ export default function RecipeForm({
         {loading
           ? "Шеф думает…"
           : ingredients.trim()
-            ? "Придумать ужин"
+            ? "Придумать рецепт"
             : "Подобрать идеи блюд"}
       </button>
     </form>
