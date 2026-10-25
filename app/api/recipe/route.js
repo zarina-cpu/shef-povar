@@ -28,7 +28,7 @@ export async function POST(request) {
   if (!dishType) {
     return badRequest("Выберите тип блюда.");
   }
-  if (ingredients.length > 2000 || equipment.length > 500 || dishType.length > 80) {
+  if (ingredients.length > 2000 || equipment.length > 500 || dishType.length > 200) {
     return badRequest("Слишком длинный список. Сократите ввод.");
   }
 

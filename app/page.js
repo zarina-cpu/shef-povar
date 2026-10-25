@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AuthBar from "@/components/AuthBar";
 import DishSuggestions from "@/components/DishSuggestions";
 import RecipeCard from "@/components/RecipeCard";
-import RecipeForm, { resolveDishType, resolveEquipment } from "@/components/RecipeForm";
+import RecipeForm, { resolveDishTypes, resolveEquipment } from "@/components/RecipeForm";
 import SavedRecipes from "@/components/SavedRecipes";
 import ThemeToggle from "@/components/ThemeToggle";
 import {
@@ -24,7 +24,7 @@ export default function HomePage() {
   const [ingredients, setIngredients] = useState("");
   const [selected, setSelected] = useState(["stove"]);
   const [extraEquipment, setExtraEquipment] = useState("");
-  const [dishType, setDishType] = useState("second");
+  const [dishTypes, setDishTypes] = useState(["second"]);
   const [recipe, setRecipe] = useState(null);
   const [recipeId, setRecipeId] = useState("");
   const [want, setWant] = useState(false);
@@ -109,7 +109,7 @@ export default function HomePage() {
     setError("");
 
     const equipment = resolveEquipment(selected, extraEquipment);
-    const dishTypeLabel = resolveDishType(dishType);
+    const dishTypeLabel = resolveDishTypes(dishTypes);
     const trimmed = ingredients.trim();
     const hasFullIngredients = trimmed.length >= 3;
     const wantsIdeas = trimmed.length === 0;
@@ -173,7 +173,7 @@ export default function HomePage() {
 
   async function handleCookFromSuggestion(dish) {
     const equipment = resolveEquipment(selected, extraEquipment);
-    const dishTypeLabel = resolveDishType(dishType);
+    const dishTypeLabel = resolveDishTypes(dishTypes);
     const list = formatIngredientsList(dish.ingredients);
     setIngredients(list);
     setError("");
@@ -200,8 +200,8 @@ export default function HomePage() {
       recipe,
       ingredients: ingredients.trim(),
       equipment: resolveEquipment(selected, extraEquipment),
-      dishType,
-      dishTypeLabel: resolveDishType(dishType),
+      dishTypes,
+      dishTypeLabel: resolveDishTypes(dishTypes),
       want,
       cooked,
       comments,
@@ -228,7 +228,13 @@ export default function HomePage() {
     setCooked(Boolean(item.cooked));
     setComments(item.comments || "");
     setIngredients(item.ingredients || ingredients);
-    setDishType(item.dishType || "second");
+    if (Array.isArray(item.dishTypes) && item.dishTypes.length) {
+      setDishTypes(item.dishTypes);
+    } else if (item.dishType) {
+      setDishTypes([item.dishType]);
+    } else {
+      setDishTypes(["second"]);
+    }
     setJustSaved(true);
     setError("");
   }
@@ -271,8 +277,8 @@ export default function HomePage() {
         setSelected={setSelected}
         extraEquipment={extraEquipment}
         setExtraEquipment={setExtraEquipment}
-        dishType={dishType}
-        setDishType={setDishType}
+        dishTypes={dishTypes}
+        setDishTypes={setDishTypes}
         loading={loading}
         onSubmit={handleSubmit}
       />
@@ -293,7 +299,7 @@ export default function HomePage() {
 
       <RecipeCard
         recipe={recipe}
-        dishTypeLabel={resolveDishType(dishType)}
+        dishTypeLabel={resolveDishTypes(dishTypes)}
         want={want}
         cooked={cooked}
         comments={comments}

@@ -23,11 +23,20 @@ export default function RecipeForm({
   setSelected,
   extraEquipment,
   setExtraEquipment,
-  dishType,
-  setDishType,
+  dishTypes,
+  setDishTypes,
   loading,
   onSubmit,
 }) {
+  function toggleDishType(id) {
+    setDishTypes((current) => {
+      if (current.includes(id)) {
+        return current.length > 1 ? current.filter((item) => item !== id) : current;
+      }
+      return [...current, id];
+    });
+  }
+
   function togglePreset(id) {
     setSelected((current) => {
       if (id === "all") {
@@ -88,14 +97,15 @@ export default function RecipeForm({
 
       <div className="field">
         <span>Тип блюда</span>
+        <p className="field-hint field-hint-inline">Можно выбрать несколько — например первое и второе.</p>
         <div className="chips">
           {DISH_TYPES.map((type) => (
             <button
               key={type.id}
               type="button"
               className="chip"
-              aria-pressed={dishType === type.id}
-              onClick={() => setDishType(type.id)}
+              aria-pressed={dishTypes.includes(type.id)}
+              onClick={() => toggleDishType(type.id)}
             >
               {type.label}
             </button>
@@ -132,6 +142,14 @@ export function resolveEquipment(selected, extraEquipment) {
   return [...labels, extra].filter(Boolean).join(", ");
 }
 
-export function resolveDishType(dishType) {
-  return DISH_TYPES.find((type) => type.id === dishType)?.label || "";
+export function resolveDishTypes(dishTypes) {
+  const ids = Array.isArray(dishTypes) ? dishTypes : dishTypes ? [dishTypes] : [];
+  return ids
+    .map((id) => DISH_TYPES.find((type) => type.id === id)?.label)
+    .filter(Boolean)
+    .join(", ");
+}
+
+export function resolveDishType(dishTypes) {
+  return resolveDishTypes(dishTypes);
 }

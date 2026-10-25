@@ -70,7 +70,7 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.18;
+  opacity: 0.24;
   overflow: hidden;
   min-height: 100vh;
   min-height: 100dvh;
@@ -82,30 +82,8 @@ body {
   pointer-events: none;
 }
 
-.food-bg-3d::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse 120% 100% at 50% 50%,
-    transparent 40%,
-    color-mix(in srgb, var(--bg) 25%, transparent) 78%,
-    var(--bg) 100%
-  );
-}
-
 [data-theme="dark"] .food-bg-3d {
-  opacity: 0.2;
-}
-
-[data-theme="dark"] .food-bg-3d::after {
-  background: radial-gradient(
-    ellipse 120% 100% at 50% 50%,
-    transparent 38%,
-    color-mix(in srgb, var(--bg) 30%, transparent) 80%,
-    var(--bg) 100%
-  );
+  opacity: 0.22;
 }
 
 .panel,
@@ -243,6 +221,10 @@ input {
   font-size: 0.92rem;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.field-hint-inline {
+  margin: -4px 0 8px;
 }
 
 .suggestions {
