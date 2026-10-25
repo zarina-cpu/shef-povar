@@ -50,9 +50,9 @@ export async function POST(request) {
   const geminiOpts = {
     temperature,
     maxOutputTokens: 2048,
-    attemptTimeoutMs: process.env.VERCEL ? 9000 : 25000,
-    deadlineMs: process.env.VERCEL ? 9500 : 50000,
-    attemptsPerModel: 1,
+    attemptTimeoutMs: 0,
+    deadlineMs: 0,
+    attemptsPerModel: 2,
   };
 
   try {

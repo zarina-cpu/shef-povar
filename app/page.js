@@ -42,7 +42,7 @@ export default function HomePage() {
 
   async function postJson(url, payload) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 28000);
+    const timer = setTimeout(() => controller.abort(), 45000);
     try {
       const response = await fetch(url, {
         method: "POST",
