@@ -80,20 +80,21 @@ export default function HomePage() {
 
   const handleAuthChange = useCallback(async (nextUser) => {
     setUser(nextUser);
-    if (!nextUser) {
-      setSavedRecipes(loadSavedRecipes());
+    if (!nextUser?.id) {
+      setSavedRecipes(loadSavedRecipes(null));
       return;
     }
 
+    const userId = nextUser.id;
     try {
-      const local = loadSavedRecipes();
+      const local = loadSavedRecipes(userId);
       const remote = await fetchRemoteRecipes();
       if (remote === null) {
         setSavedRecipes(local);
         return;
       }
       const merged = mergeRecipeLists(local, remote);
-      writeSavedRecipes(merged);
+      writeSavedRecipes(merged, userId);
       setSavedRecipes(merged);
       for (const entry of merged) {
         try {
@@ -103,12 +104,12 @@ export default function HomePage() {
         }
       }
     } catch {
-      /* синхронизация в фоне, без сообщения в интерфейсе */
+      setSavedRecipes(loadSavedRecipes(userId));
     }
   }, []);
 
   useEffect(() => {
-    setSavedRecipes(loadSavedRecipes());
+    setSavedRecipes(loadSavedRecipes(null));
   }, []);
 
   function resetRecipeMeta(nextId) {
@@ -292,10 +293,10 @@ export default function HomePage() {
     };
     const next = upsertSavedRecipe(entry, savedRecipes);
     setSavedRecipes(next);
-    writeSavedRecipes(next);
+    writeSavedRecipes(next, user?.id ?? null);
     setJustSaved(true);
 
-    if (user) {
+    if (user?.id) {
       try {
         await pushRecipeToServer(entry);
       } catch {
@@ -325,11 +326,11 @@ export default function HomePage() {
   async function removeSaved(id) {
     const next = savedRecipes.filter((item) => item.id !== id);
     setSavedRecipes(next);
-    writeSavedRecipes(next);
+    writeSavedRecipes(next, user?.id ?? null);
     if (id === recipeId) {
       setJustSaved(false);
     }
-    if (user) {
+    if (user?.id) {
       try {
         await deleteRecipeOnServer(id);
       } catch {
