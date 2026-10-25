@@ -135,10 +135,6 @@ export default function LoginForm({ cloudReady, googleReady }) {
         </button>
       </form>
 
-      <p className="status auth-hint">
-        Рецепты хранятся в Turso и доступны после деплоя на Vercel с теми же переменными окружения.
-      </p>
-
       {message ? <p className="status">{message}</p> : null}
       {error ? <p className="status error">{error}</p> : null}
     </div>

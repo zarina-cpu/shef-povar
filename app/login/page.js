@@ -19,10 +19,6 @@ export default function LoginPage() {
         </div>
         <div className="brand">
           <h1>Вход</h1>
-          <p>
-            Google или email — рецепты в Turso и синхронизация на Vercel между телефоном,
-            планшетом и компьютером.
-          </p>
         </div>
       </header>
 
