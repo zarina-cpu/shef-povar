@@ -62,9 +62,14 @@ export async function POST(request) {
     }
   }
 
-  const message = /API[_ ]?key|permission|401|403/i.test(lastError)
-    ? "Ключ Gemini отклонён. Проверьте GEMINI_API_KEY в Google AI Studio."
-    : "Не получилось собрать рецепт. Попробуйте ещё раз.";
+  let message = "Не получилось собрать рецепт. Попробуйте ещё раз.";
+  if (/API[_ ]?key|permission|401|403/i.test(lastError)) {
+    message = "Ключ Gemini отклонён. Проверьте GEMINI_API_KEY в Google AI Studio.";
+  } else if (/503|overloaded|unavailable/i.test(lastError)) {
+    message = "Gemini временно перегружен. Подождите минуту и попробуйте снова.";
+  } else if (/404|not found|no longer/i.test(lastError)) {
+    message = "Модель Gemini недоступна. Обновите приложение или ключ API.";
+  }
 
   return Response.json({ error: message }, { status: 502 });
 }
