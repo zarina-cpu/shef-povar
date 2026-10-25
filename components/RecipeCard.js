@@ -11,6 +11,9 @@ export default function RecipeCard({
   onCooked,
   onComments,
   onSave,
+  onAnother,
+  onClose,
+  loading = false,
 }) {
   if (!recipe) {
     return null;
@@ -18,6 +21,15 @@ export default function RecipeCard({
 
   return (
     <article className="recipe">
+      <button
+        type="button"
+        className="recipe-close"
+        aria-label="Закрыть рецепт"
+        title="Закрыть"
+        onClick={onClose}
+      >
+        ×
+      </button>
       <h2>{recipe.title}</h2>
       {recipe.tagline ? <p className="tagline">{recipe.tagline}</p> : null}
       {dishTypeLabel ? <p className="recipe-kind">{dishTypeLabel}</p> : null}
@@ -89,9 +101,19 @@ export default function RecipeCard({
           />
         </label>
 
-        <button className="save" type="button" onClick={onSave}>
-          {saved ? "Рецепт сохранён" : "Сохранить рецепт"}
-        </button>
+        <div className="recipe-actions-buttons">
+          <button className="save" type="button" onClick={onSave} disabled={loading}>
+            {saved ? "Рецепт сохранён" : "Сохранить рецепт"}
+          </button>
+          <button
+            className="recipe-alt"
+            type="button"
+            onClick={onAnother}
+            disabled={loading}
+          >
+            {loading ? "Шеф думает…" : "Другой вариант"}
+          </button>
+        </div>
       </div>
     </article>
   );

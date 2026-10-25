@@ -18,6 +18,9 @@ export async function POST(request) {
   const ingredients = String(body?.ingredients || "").trim();
   const equipment = String(body?.equipment || "").trim();
   const dishType = String(body?.dishType || "").trim();
+  const avoidTitles = Array.isArray(body?.avoidTitles)
+    ? body.avoidTitles.map((t) => String(t || "").trim()).filter(Boolean).slice(0, 8)
+    : [];
 
   if (ingredients.length < 3) {
     return badRequest("Напишите хотя бы несколько продуктов.");
@@ -41,7 +44,8 @@ export async function POST(request) {
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const prompt = buildPrompt(ingredients, equipment, dishType);
+  const prompt = buildPrompt(ingredients, equipment, dishType, avoidTitles);
+  const temperature = avoidTitles.length ? 0.95 : 0.8;
   let lastError = "Не удалось связаться с Gemini.";
 
   for (const modelName of GEMINI_MODELS) {
@@ -49,7 +53,7 @@ export async function POST(request) {
       const model = genAI.getGenerativeModel({
         model: modelName,
         generationConfig: {
-          temperature: 0.8,
+          temperature,
           responseMimeType: "application/json",
         },
       });

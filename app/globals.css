@@ -446,11 +446,39 @@ textarea:focus,
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 28px 24px;
+  padding: 48px 24px 28px;
+}
+
+.recipe-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--muted);
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recipe-close:hover,
+.recipe-close:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
 }
 
 .recipe h2 {
   margin: 0 0 8px;
+  padding-right: 2.5rem;
   font-family: "Jost", sans-serif;
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   font-weight: 800;
@@ -564,6 +592,34 @@ textarea:focus,
   margin-bottom: 12px;
 }
 
+.recipe-actions-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recipe-alt {
+  width: 100%;
+  margin-top: 0;
+  border: 1px solid var(--chip-border);
+  background: var(--chip);
+  color: var(--ink);
+  padding: 14px 22px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.recipe-alt:hover:not(:disabled) {
+  background: var(--chip-hover);
+  border-color: var(--eye-teal);
+}
+
+.recipe-alt:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .saved {
   margin-top: 36px;
 }
@@ -638,7 +694,16 @@ textarea:focus,
   gap: 8px;
 }
 
+.profile-avatar-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .profile-avatar {
+  position: relative;
   flex-shrink: 0;
   width: 40px;
   height: 40px;
@@ -651,6 +716,24 @@ textarea:focus,
   align-items: center;
   justify-content: center;
   color: var(--muted);
+}
+
+.profile-avatar-btn {
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.profile-avatar-btn:hover:not(:disabled),
+.profile-avatar-btn:focus-visible {
+  border-color: var(--eye-teal);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(50, 179, 179, 0.35);
+}
+
+.profile-avatar-btn:disabled {
+  cursor: wait;
+  opacity: 0.85;
 }
 
 [data-theme="dark"] .profile-avatar {

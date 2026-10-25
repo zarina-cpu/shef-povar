@@ -37,6 +37,7 @@ export default function HomePage() {
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsIntro, setSuggestionsIntro] = useState("");
   const [ideasMode, setIdeasMode] = useState(false);
+  const [avoidRecipeTitles, setAvoidRecipeTitles] = useState([]);
 
   const handleAuthChange = useCallback(async (nextUser) => {
     setUser(nextUser);
@@ -83,7 +84,12 @@ export default function HomePage() {
     return list.map((item) => `${item.name} — ${item.amount}`).join(", ");
   }
 
-  async function fetchRecipeForIngredients(ingredientsText, equipment, dishTypeLabel) {
+  async function fetchRecipeForIngredients(
+    ingredientsText,
+    equipment,
+    dishTypeLabel,
+    avoidTitles = []
+  ) {
     const response = await fetch("/api/recipe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -91,6 +97,7 @@ export default function HomePage() {
         ingredients: ingredientsText,
         equipment,
         dishType: dishTypeLabel,
+        avoidTitles,
       }),
     });
     const data = await response.json();
@@ -99,6 +106,7 @@ export default function HomePage() {
     }
     setRecipe(data.recipe);
     resetRecipeMeta(makeRecipeId());
+    setAvoidRecipeTitles(avoidTitles);
     setSuggestions([]);
     setSuggestionsIntro("");
     setIdeasMode(false);
@@ -131,6 +139,7 @@ export default function HomePage() {
 
     setLoading(true);
     setRecipe(null);
+    setAvoidRecipeTitles([]);
 
     if (wantsIdeas) {
       setSuggestions([]);
@@ -163,9 +172,44 @@ export default function HomePage() {
     setSuggestionsIntro("");
 
     try {
-      await fetchRecipeForIngredients(trimmed, equipment, dishTypeLabel);
+      await fetchRecipeForIngredients(trimmed, equipment, dishTypeLabel, []);
     } catch (err) {
       setError(err.message || "Не получилось собрать рецепт.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleCloseRecipe() {
+    setRecipe(null);
+    setRecipeId("");
+    setWant(false);
+    setCooked(false);
+    setComments("");
+    setJustSaved(false);
+    setAvoidRecipeTitles([]);
+    setError("");
+  }
+
+  async function handleAnotherRecipe() {
+    if (!recipe || loading) {
+      return;
+    }
+    const trimmed = ingredients.trim();
+    const equipment = resolveEquipment(selected, extraEquipment);
+    const dishTypeLabel = resolveDishTypes(dishTypes);
+    if (trimmed.length < 3 || !equipment || !dishTypeLabel) {
+      return;
+    }
+
+    const avoid = [...avoidRecipeTitles, recipe.title].filter(Boolean);
+    setError("");
+    setLoading(true);
+
+    try {
+      await fetchRecipeForIngredients(trimmed, equipment, dishTypeLabel, avoid);
+    } catch (err) {
+      setError(err.message || "Не получилось подобрать другой вариант.");
     } finally {
       setLoading(false);
     }
@@ -179,9 +223,10 @@ export default function HomePage() {
     setError("");
     setLoading(true);
     setRecipe(null);
+    setAvoidRecipeTitles([]);
 
     try {
-      await fetchRecipeForIngredients(list, equipment, dishTypeLabel);
+      await fetchRecipeForIngredients(list, equipment, dishTypeLabel, []);
     } catch (err) {
       setError(err.message || "Не получилось собрать рецепт.");
     } finally {
@@ -313,6 +358,9 @@ export default function HomePage() {
           setJustSaved(false);
         }}
         onSave={handleSave}
+        onAnother={handleAnotherRecipe}
+        onClose={handleCloseRecipe}
+        loading={loading}
       />
 
       <SavedRecipes items={savedRecipes} onOpen={openSaved} onRemove={removeSaved} />
